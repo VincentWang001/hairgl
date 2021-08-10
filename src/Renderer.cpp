@@ -5,6 +5,8 @@
 #include <hairgl/Math.h>
 #include "shaders/ShaderTypes.h"
 
+#include <iostream>
+
 namespace HairGL
 {
     const std::string GLSLVersion = "#version 430 core\n";
@@ -64,6 +66,10 @@ namespace HairGL
 		glUniform1f(glGetUniformLocation(simulationProgramID, "localStiffness"), (std::min)(instance->settings.localStiffness, 0.95f) * 0.5f);
         glUniform1f(glGetUniformLocation(simulationProgramID, "damping"), instance->settings.damping);
         glUniform3f(glGetUniformLocation(simulationProgramID, "gravity"), 0.0f, -9.8f, 0.0f);
+        glUniform1f(glGetUniformLocation(simulationProgramID, "windMagnitude"), instance->settings.windMagnitude);
+        glUniform1f(glGetUniformLocation(simulationProgramID, "thetaX"), instance->settings.thetaX);
+        glUniform1f(glGetUniformLocation(simulationProgramID, "thetaY"), instance->settings.thetaY);
+        glUniform1f(glGetUniformLocation(simulationProgramID, "thetaZ"), instance->settings.thetaZ);
         glUniform1i(glGetUniformLocation(simulationProgramID, "lengthConstraintIterations"), 5);
 		glUniform1i(glGetUniformLocation(simulationProgramID, "localShapeIterations"), 10);
 		glUniformMatrix4fv(glGetUniformLocation(simulationProgramID, "windPyramid"), 1, false, (float*)windPyramid.m);
@@ -74,6 +80,7 @@ namespace HairGL
         glMemoryBarrier(GL_SHADER_STORAGE_BARRIER_BIT);
 
 		instance->simulationFrame++;
+        //std::cout << "instance simulationframe: " << instance->simulationFrame << std::endl;
     }
 
     void Renderer::Render(const HairInstance* instance, const Matrix4& viewMatrix, const Matrix4& projectionMatrix) const

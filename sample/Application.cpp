@@ -28,7 +28,7 @@ Application::Application(const char* windowTitle, int initialScreenWidth, int in
     ImGui_ImplGlfw_InitForOpenGL(window, true);
     ImGui_ImplOpenGL3_Init();
 
-    hairAsset = hairSystem->LoadAsset("data/hair.hgl");
+    hairAsset = hairSystem->LoadAsset("data/hairtest.hgl");
     hairInstance = hairSystem->CreateInstance(hairAsset);
 
     hairSettings.visualizeGuides = true;
@@ -65,7 +65,7 @@ void Application::Update(float timeStep)
 
     ImVec2 settingsWindowSize;
     settingsWindowSize.x = 400;
-    settingsWindowSize.y = 430;
+    settingsWindowSize.y = 530;
 
     ImGui::SetNextWindowPos(settingsWindowPosition);
     ImGui::SetNextWindowSizeConstraints(settingsWindowSize, settingsWindowSize);
@@ -86,7 +86,12 @@ void Application::Update(float timeStep)
     ImGui::SliderFloat("Global Stiffness", &hairSettings.globalStiffness, 0.0f, 1.0f);
 	ImGui::SliderFloat("Local Stiffness", &hairSettings.localStiffness, 0.0f, 1.0f);
     ImGui::SliderFloat("Damping", &hairSettings.damping, 0.0f, 0.5f);
-	ImGui::SliderFloat("Wind Magnitude", &windMagnitude, 0.0f, 100.0f);
+	ImGui::SliderFloat("Wind Magnitude", &hairSettings.windMagnitude, 0.0f, 25.0f);
+    float upperRotationRadianBound = 0.03f;
+    ImGui::SliderFloat("thetaX", &hairSettings.thetaX, -1* upperRotationRadianBound, upperRotationRadianBound);
+    ImGui::SliderFloat("thetaY", &hairSettings.thetaY, -1 * upperRotationRadianBound, upperRotationRadianBound);
+    ImGui::SliderFloat("thetaZ", &hairSettings.thetaZ, -1 * upperRotationRadianBound, upperRotationRadianBound);
+    windMagnitude = hairSettings.windMagnitude;
     ImGui::End();
     ImGui::Render();
 

@@ -36,10 +36,14 @@ namespace HairGL
         Vector4 color;
 
         //SIMULATION
+        float windMagnitude;
         float globalStiffness;
 		float localStiffness;
         float damping;
 		Vector3 wind;
+        float thetaX;
+        float thetaY;
+        float thetaZ;
 
         HairInstanceSettings() :
             visualizeGuides(false),
@@ -58,7 +62,11 @@ namespace HairGL
             globalStiffness(0),
 			localStiffness(0),
             damping(0),
-			wind(0, 0, 0)
+			wind(0, 0, 0),
+            windMagnitude(0.0f),
+            thetaX(0),
+            thetaY(0),
+            thetaZ(0)
         {
             modelMatrix.SetIdentity();
         }

@@ -3,6 +3,7 @@
 #include <vector>
 #include "gl/GLUtils.h"
 #include "Renderer.h"
+#include <iostream>
 
 namespace HairGL
 {
@@ -119,9 +120,19 @@ namespace HairGL
         fread(&guidesCount, sizeof(guidesCount), 1, file);
         fread(&segmentsCount, sizeof(segmentsCount), 1, file);
         fread(&trianglesCount, sizeof(trianglesCount), 1, file);
+        //trianglesCount = 0;
 
+        //segmentsCount = 16;
+        std::cout << "guidesCount: " << guidesCount << std::endl;
+        std::cout << "segmentsCount: " << segmentsCount << std::endl;
+        std::cout << "trianglesCount: " << trianglesCount << std::endl;
         int verticesPerStrand = segmentsCount + 1;
         std::vector<Vector4> vertices(guidesCount * verticesPerStrand);
+        
+
+        float meanX = 0.;
+        float meanY = 0.;
+        float meanZ = 0.;
         for (int i = 0; i < vertices.size(); i++) {
             if (feof(file)) {
                 throw std::runtime_error(std::string("Invalid hair asset file ") + path);
@@ -129,6 +140,20 @@ namespace HairGL
 
             fread(&vertices[i], sizeof(float), 3, file);
             vertices[i].w = i % verticesPerStrand == 0 ? 0 : 1;
+            
+            meanX += vertices[i].x;
+            meanY += vertices[i].y;
+            meanZ += vertices[i].z;
+            //std::cout << vertices[i].x << " " << vertices[i].y << " " << vertices[i].z << std::endl;
+        }
+
+        meanX /= vertices.size();
+        meanY /= vertices.size();
+        meanZ /= vertices.size();
+        for (int i = 0; i < vertices.size(); i++) {
+            vertices[i].x -= meanX;
+            vertices[i].y -= meanY;
+            vertices[i].z -= meanZ;
         }
 
         std::vector<int> triangles(trianglesCount * 4, 0);
@@ -138,7 +163,13 @@ namespace HairGL
             }
 
             fread(&triangles[i * 4], sizeof(int), 3, file);
+            //reads 3 ints at a time and puts them sequentially into a vector of ints
         }
+
+        /*std::cout << "triangles: " << std::endl;
+        for (int i = 0; i < triangles.size(); i++) {
+            std::cout << i << ": " << triangles[i] << std::endl;
+        }*/
 
         fclose(file);
 

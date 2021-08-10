@@ -49,6 +49,10 @@ uniform vec3 gravity;
 uniform int lengthConstraintIterations;
 uniform int localShapeIterations;
 uniform mat4 windPyramid;
+uniform float windMagnitude;
+uniform float thetaX;
+uniform float thetaY;
+uniform float thetaZ;
 
 shared vec4 sharedPositions[MAX_STRAND_VERTICES];
 
@@ -104,6 +108,7 @@ vec4 multQuaternionAndQuaternion(vec4 qA, vec4 qB)
     return q;
 }
 
+//returns a vec2
 vec2 constraintMultiplier(vec4 p0, vec4 p1)
 {
     if(isMovable(p0)) {
@@ -127,6 +132,7 @@ vec4 integrate(vec4 currentPosition, vec4 oldPosition, vec3 force, float damping
 	return outputPos;
 }
 
+//used so that the strands don't get too long (constrained length)
 void applyDistanceConstraint(int index0, int index1, float targetDistance)
 {
     vec4 p0 = sharedPositions[index0];
@@ -154,6 +160,8 @@ vec3 calculateWindForce(int localID, int globalID) {
 	return windForce;
 }
 
+
+//for a specific point based on localID and globalID
 void main()
 {
     int globalID = int(gl_GlobalInvocationID.x);
@@ -171,23 +179,65 @@ void main()
 	vec4 initialPosition = restPositions.data[globalVertexIndex];
 	vec4 tangentDistance = tangentsDistances.data[globalVertexIndex];
 	
+
+	vec4 oldcurrentPosition = currentPosition;
+	mat3 Rx = mat3(1, 0,          0,
+				   0, cos(thetaX), -sin(thetaX),
+				   0, sin(thetaX), cos(thetaX));
+	
+	mat3 Ry = mat3(cos(thetaY), 0, sin(thetaY),
+				   0, 1,  0,
+				   -sin(thetaY), 0, cos(thetaY));
+
+	mat3 Rz = mat3(cos(thetaZ), -sin(thetaZ), 0,
+				   sin(thetaZ), cos(thetaZ),  0,
+				   0, 0, 1);
+	
+	if (localID == 0) {
+		currentPosition.xyz = Rx * Ry * Rz * currentPosition.xyz;
+		
+	}
+	restPositions.data[globalVertexIndex].xyz = Rx * Ry * Rz * restPositions.data[globalVertexIndex].xyz;
+	//initialPosition.xyz = Rx * Ry * Rz * initialPosition.xyz;
+	
 	//Fill shared positions
 	sharedPositions[localID] = currentPosition;
 	barrier();
 
+	//rotation force
+	vec3 rotationForce = vec3(0.0f, 0.0f, 0.0f);
+	rotationForce = (currentPosition.xyz - oldcurrentPosition.xyz) * 100;
+
+	vec3 defaultForce = (initialPosition.xyz - sharedPositions[localID].xyz) * 1000;
 	//Apply forces using Verlet integration
 	if(isMovable(currentPosition)) {
-	    vec3 force = gravity + calculateWindForce(localID, globalID);
+		float windThreshold = 15.0;
+		vec3 force;
+		if (windMagnitude > windThreshold) {
+			force = gravity + calculateWindForce(localID, globalID) + rotationForce;
+		} else {
+			force = gravity + calculateWindForce(localID, globalID) + rotationForce + defaultForce * globalStiffness * (windThreshold - windMagnitude) / windThreshold;
+		}
 	    sharedPositions[localID] = integrate(currentPosition, previousPosition, force, damping);
 	}
 
 	//Global stiffness
+	/* 
+	globalStiffness is a number between 0 and 1
+	when globalStiffness = 1, delta = init - shared, 
+		shared = shared + (init - shared),
+		shared = init
+	*/
+	/*
 	vec3 delta = globalStiffness * (initialPosition - sharedPositions[localID]).xyz;
 	sharedPositions[localID].xyz += delta;
+	*/
 	barrier();
 
+
 	//Local shape
-	if(localID == 0) {
+	if(localID == 0) {//localID == 0 for root points, in other words if this is a root vertex
+		//localShapeIterations is currently set to 10 in Renderer.cpp
 	    for(int i = 0; i < localShapeIterations; i++) {
 		    vec4 position = sharedPositions[1];
 			vec4 globalRotation = globalRotations.data[globalRootVertexIndex];
@@ -229,7 +279,7 @@ void main()
 	barrier();
 
 	//Length constraints
-	for(int i = 0; i < lengthConstraintIterations; i++) {
+	for(int i = 0; i < lengthConstraintIterations; i++) {//lengthConstraintIterations is set to 5
 
 	    if(localID % 2 == 0 && localID < verticesPerStrand - 1) {
 		    applyDistanceConstraint(localID, localID + 1, tangentDistance.w);
