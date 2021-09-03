@@ -53,6 +53,7 @@ uniform float windMagnitude;
 uniform float thetaX;
 uniform float thetaY;
 uniform float thetaZ;
+uniform int simulationFrame;
 
 shared vec4 sharedPositions[MAX_STRAND_VERTICES];
 
@@ -125,23 +126,50 @@ void updateFinalPositions(vec4 oldPosition, vec4 newPosition, int globalVertexIn
 	previousPositions.data[globalVertexIndex] = oldPosition;
 }
 
-vec4 integrate(vec4 currentPosition, vec4 oldPosition, vec3 force, float dampingCoeff)
+vec4 integrate(vec4 currentPosition, vec4 oldPosition, vec3 force, float dampingCoeff, float particleMass)
 {
     vec4 outputPos = currentPosition;
-	outputPos.xyz = currentPosition.xyz + (1.0 - dampingCoeff) * (currentPosition.xyz - oldPosition.xyz) + force * timeStep * timeStep;
+	//outputPos.xyz = currentPosition.xyz + (1.0 - dampingCoeff) * (currentPosition.xyz - oldPosition.xyz) + force * timeStep * timeStep;
+	outputPos.xyz = currentPosition.xyz + (currentPosition.xyz - oldPosition.xyz) + (force / particleMass) * timeStep * timeStep;
 	return outputPos;
 }
 
 //used so that the strands don't get too long (constrained length)
+/*what this method does: after a point is moved to a new position for next timeStep
+because of a force, the distance between this point and adjacent point is 
+most likely not the same anymore, which isn't good because we always want 
+strands to remain the same length. This function helps with length correction by
+compressing the two points towards each other if too far, and stretching if
+too close. This function preserves the orientation of the line/vector between
+the two points.
+*/
 void applyDistanceConstraint(int index0, int index1, float targetDistance)
 {
+	//index0 and 1 are always adjacent, with 0 to 1 from root to tip
     vec4 p0 = sharedPositions[index0];
 	vec4 p1 = sharedPositions[index1];
 
 	vec3 delta = p1.xyz - p0.xyz;
 	float distance = max(length(delta), 1e-7);
+	/* if distance = targetDistance, stretching = 0
+	if distance < targetDistance, stretching < 0
+	if distance > targetDistance, stretching > 0
+	*/
 	float stretching = 1 - targetDistance / distance;
 	delta = delta * stretching;
+	/* 
+	case 1: current distance too long, want to pull back in
+	let td = 1, d = 1.2
+	stretch = 1 - 1 / 1.2 = 0.16667
+	delta = 1.2 * 0.16667 = 0.2
+
+
+
+	case 2: current distance too short, want to stretch back out
+	let td = 5.3, d = 2.8
+	stretch = 1 - 5.3 / 2.8 = -0.8928
+	delta = 2.8 * -0.8928 = -2.5
+	*/
 	vec2 multiplier = constraintMultiplier(p0, p1);
 
 	sharedPositions[index0].xyz += multiplier[0] * delta;
@@ -160,10 +188,18 @@ vec3 calculateWindForce(int localID, int globalID) {
 	return windForce;
 }
 
-
+vec3 calculateSpringForce(vec4 currentPosition, vec4 initialPosition) {
+	int k = 50;
+	return -k * (currentPosition.xyz - initialPosition.xyz);
+}
 //for a specific point based on localID and globalID
 void main()
 {
+	float particleMass = 1.0f;
+	/*
+	-damping force
+	*/
+	int phase2 = 500;
     int globalID = int(gl_GlobalInvocationID.x);
 	int localID = int(gl_LocalInvocationID.y);
 
@@ -178,7 +214,11 @@ void main()
 	vec4 previousPosition = previousPositions.data[globalVertexIndex];
 	vec4 initialPosition = restPositions.data[globalVertexIndex];
 	vec4 tangentDistance = tangentsDistances.data[globalVertexIndex];
-	
+
+
+	if (simulationFrame == phase2) {
+		restPositions.data[globalVertexIndex] = currentPosition;
+	}	
 
 	vec4 oldcurrentPosition = currentPosition;
 	mat3 Rx = mat3(1, 0,          0,
@@ -193,9 +233,10 @@ void main()
 				   sin(thetaZ), cos(thetaZ),  0,
 				   0, 0, 1);
 	
+	//only roots should be rotated by rotation force
+	//the other points should be moved by chain reaction from root to tip
 	if (localID == 0) {
-		currentPosition.xyz = Rx * Ry * Rz * currentPosition.xyz;
-		
+		currentPosition.xyz = Rx * Ry * Rz * currentPosition.xyz;	
 	}
 	restPositions.data[globalVertexIndex].xyz = Rx * Ry * Rz * restPositions.data[globalVertexIndex].xyz;
 	//initialPosition.xyz = Rx * Ry * Rz * initialPosition.xyz;
@@ -206,19 +247,30 @@ void main()
 
 	//rotation force
 	vec3 rotationForce = vec3(0.0f, 0.0f, 0.0f);
-	rotationForce = (currentPosition.xyz - oldcurrentPosition.xyz) * 100;
+	//rotationForce = (currentPosition.xyz - oldcurrentPosition.xyz) * 70000;
 
 	vec3 defaultForce = (initialPosition.xyz - sharedPositions[localID].xyz) * 1000;
+	
+	//spring and damping force
+	vec3 springForce = vec3(0.0f, 0.0f, 0.0f);
+	//vec3 dampingForce = vec3(0.0f, 0.0f, 0.0f);
+	vec3 dampingForce = (damping * 10000) * (currentPosition-previousPosition).xyz;
+	if (simulationFrame > phase2) {
+		springForce = calculateSpringForce(currentPosition, initialPosition);
+	}
 	//Apply forces using Verlet integration
 	if(isMovable(currentPosition)) {
 		float windThreshold = 15.0;
 		vec3 force;
+		force = gravity + springForce +	 calculateWindForce(localID, globalID) + rotationForce - dampingForce;
+		/*
 		if (windMagnitude > windThreshold) {
-			force = gravity + calculateWindForce(localID, globalID) + rotationForce;
+			force = gravity + springForce +	 calculateWindForce(localID, globalID) + rotationForce - dampingForce;
 		} else {
-			force = gravity + calculateWindForce(localID, globalID) + rotationForce + defaultForce * globalStiffness * (windThreshold - windMagnitude) / windThreshold;
+			force = gravity + springForce + calculateWindForce(localID, globalID) + rotationForce - dampingForce + defaultForce * globalStiffness * (windThreshold - windMagnitude) / windThreshold;
 		}
-	    sharedPositions[localID] = integrate(currentPosition, previousPosition, force, damping);
+		*/
+	    sharedPositions[localID] = integrate(currentPosition, previousPosition, force, damping, particleMass);
 	}
 
 	//Global stiffness
@@ -280,16 +332,40 @@ void main()
 
 	//Length constraints
 	for(int i = 0; i < lengthConstraintIterations; i++) {//lengthConstraintIterations is set to 5
+		//for debugging purposes
+		bool boolApplyDistanceConstraint = true;
+		if (!boolApplyDistanceConstraint){
+			if(localID % 2 == 0 && localID < verticesPerStrand - 1) {
+				if (simulationFrame <= phase2) {
+					applyDistanceConstraint(localID, localID + 1, tangentDistance.w);
+				}
+				
+			}
 
-	    if(localID % 2 == 0 && localID < verticesPerStrand - 1) {
-		    applyDistanceConstraint(localID, localID + 1, tangentDistance.w);
+			barrier();
+
+			if(localID % 2 == 1 && localID < verticesPerStrand - 1) {
+				if (simulationFrame <= phase2) {
+					applyDistanceConstraint(localID, localID + 1, tangentDistance.w);
+				}
+			}
+		} else {
+			if(localID % 2 == 0 && localID < verticesPerStrand - 1) {
+				//if (simulationFrame <= phase2) {
+					applyDistanceConstraint(localID, localID + 1, tangentDistance.w);
+				//}
+				
+			}
+
+			barrier();
+
+			if(localID % 2 == 1 && localID < verticesPerStrand - 1) {
+				//if (simulationFrame <= phase2) {
+					applyDistanceConstraint(localID, localID + 1, tangentDistance.w);
+				//}
+			}
 		}
-
-		barrier();
-
-		if(localID % 2 == 1 && localID < verticesPerStrand - 1) {
-		    applyDistanceConstraint(localID, localID + 1, tangentDistance.w);
-		}
+	    
 
 		barrier();
 	}

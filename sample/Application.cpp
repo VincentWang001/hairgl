@@ -46,7 +46,7 @@ void Application::Run()
 
     while (!glfwWindowShouldClose(window)) {
         glfwPollEvents();
-        Update(1.0f / 60.0f);
+        Update(1.0f / 300.0f);
         Render();
     }
 }

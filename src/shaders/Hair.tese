@@ -79,7 +79,7 @@ void main()
 	coeffMatrix[0] = vec4(-1, 3, -3, 1);
 	coeffMatrix[1] = vec4(3, -6, 0, 4);
 	coeffMatrix[2] = vec4(-3, 3, 3, 1);
-	coeffMatrix[3] = vec4(1, 0, 0, 0);
+	coeffMatrix[3] = vec4(0);
 	vec4 bVec = uVec * coeffMatrix;
 
 	out_pos = p0 * bVec[0] + p1 * bVec[1] + p2 * bVec[2] + p3 * bVec[3];

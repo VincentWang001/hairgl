@@ -70,6 +70,7 @@ namespace HairGL
         glUniform1f(glGetUniformLocation(simulationProgramID, "thetaX"), instance->settings.thetaX);
         glUniform1f(glGetUniformLocation(simulationProgramID, "thetaY"), instance->settings.thetaY);
         glUniform1f(glGetUniformLocation(simulationProgramID, "thetaZ"), instance->settings.thetaZ);
+        glUniform1i(glGetUniformLocation(simulationProgramID, "simulationFrame"), instance->simulationFrame);
         glUniform1i(glGetUniformLocation(simulationProgramID, "lengthConstraintIterations"), 5);
 		glUniform1i(glGetUniformLocation(simulationProgramID, "localShapeIterations"), 10);
 		glUniformMatrix4fv(glGetUniformLocation(simulationProgramID, "windPyramid"), 1, false, (float*)windPyramid.m);
@@ -80,7 +81,7 @@ namespace HairGL
         glMemoryBarrier(GL_SHADER_STORAGE_BARRIER_BIT);
 
 		instance->simulationFrame++;
-        //std::cout << "instance simulationframe: " << instance->simulationFrame << std::endl;
+        std::cout << "instance simulationframe: " << instance->simulationFrame << std::endl;
     }
 
     void Renderer::Render(const HairInstance* instance, const Matrix4& viewMatrix, const Matrix4& projectionMatrix) const
@@ -104,9 +105,16 @@ namespace HairGL
             glUniform1i(glGetUniformLocation(guidesVisualizationProgramID, "doubleSegments"), asset->segmentsCount * 2);
             glUniform1i(glGetUniformLocation(guidesVisualizationProgramID, "verticesPerStrand"), verticesPerStrand);
             glUniform4f(glGetUniformLocation(guidesVisualizationProgramID, "color"), 1, 0, 0, 1);
+            glUniform4f(glGetUniformLocation(guidesVisualizationProgramID, "color2"), 0, 1, 0, 1);
 
             glBindVertexArray(emptyVertexArrayID);
-            glDrawArrays(GL_LINES, 0, asset->guidesCount * asset->segmentsCount * 2);
+            bool pointsMode = true;
+            if(pointsMode) {
+                glPointSize(4.0);
+                glDrawArrays(GL_POINTS, 0, asset->guidesCount * asset->segmentsCount * 2);
+            } else {
+                glDrawArrays(GL_LINES, 0, asset->guidesCount * asset->segmentsCount * 2);
+            }         
             glUseProgram(0);
         }
 
@@ -202,17 +210,20 @@ namespace HairGL
     uint32_t Renderer::CreateHairRenderingProgram()
     {
         auto hairVertexShaderSource = LoadFile("hairglshaders/Hair.vert");
+        auto hairVertexShaderSource2 = LoadFile("hairglshaders/Hair2.vert");
         auto hairTessControlShaderSource = LoadFile("hairglshaders/Hair.tesc");
         auto hairTessEvaluationShaderSource = LoadFile("hairglshaders/Hair.tese");
         auto hairGeometrylShaderSource = LoadFile("hairglshaders/Hair.geom");
         auto hairFragmentShaderSource = LoadFile("hairglshaders/Hair.frag");
 
         uint32_t hairVertexShaderID = CompileShader(GLSLVersion, hairVertexShaderSource, GL_VERTEX_SHADER, &shaderIncludeSrc);
+        uint32_t hairVertexShaderID2 = CompileShader(GLSLVersion, hairVertexShaderSource2, GL_VERTEX_SHADER, &shaderIncludeSrc);
         uint32_t hairTessControlShaderID = CompileShader(GLSLVersion, hairTessControlShaderSource, GL_TESS_CONTROL_SHADER, &shaderIncludeSrc);
         uint32_t hairTessEvaluationShaderID = CompileShader(GLSLVersion, hairTessEvaluationShaderSource, GL_TESS_EVALUATION_SHADER, &shaderIncludeSrc);
         uint32_t hairGeometryShaderID = CompileShader(GLSLVersion, hairGeometrylShaderSource, GL_GEOMETRY_SHADER, &shaderIncludeSrc);
         uint32_t hairFragmentShaderID = CompileShader(GLSLVersion, hairFragmentShaderSource, GL_FRAGMENT_SHADER, &shaderIncludeSrc);
 
+        //uint32_t programID = LinkProgram(hairVertexShaderID, hairVertexShaderID2, hairTessControlShaderID, hairTessEvaluationShaderID, hairGeometryShaderID, hairFragmentShaderID);
         uint32_t programID = LinkProgram(hairVertexShaderID, hairTessControlShaderID, hairTessEvaluationShaderID, hairGeometryShaderID, hairFragmentShaderID);
 
         glDeleteShader(hairVertexShaderID);
