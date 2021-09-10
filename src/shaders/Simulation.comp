@@ -178,7 +178,10 @@ void applyDistanceConstraint(int index0, int index1, float targetDistance)
 
 vec3 calculateWindForce(int localID, int globalID) {
     vec3 wind0 = windPyramid[0].xyz;
-	if(length(wind0) == 0 || localID < 2 || localID >= verticesPerStrand - 1) {
+	// if(length(wind0) == 0 || localID < 2 || localID >= verticesPerStrand - 1) {
+	//     return vec3(0.0, 0.0, 0.0);
+	// }
+	if(length(wind0) == 0 || localID < 1) {
 	    return vec3(0.0, 0.0, 0.0);
 	}
 	float a = (globalID % 20) / 20.0f;
@@ -188,10 +191,33 @@ vec3 calculateWindForce(int localID, int globalID) {
 	return windForce;
 }
 
-vec3 calculateSpringForce(vec4 currentPosition, vec4 initialPosition) {
-	int k = 50;
-	return -k * (currentPosition.xyz - initialPosition.xyz);
+vec3 calculateSpringForce(vec4 currentPosition, vec4 initialPosition, int globalVertexIndex, int localID) {
+	if (localID == 0) {
+		return vec3(0.0f, 0.0f, 0.0f);
+	}
+
+	vec4 abovePosition = positions.data[globalVertexIndex - 1];
+	vec4 belowPosition = positions.data[globalVertexIndex + 1];
+	int k = 5000;
+
+	
+	vec3 springForceAbove = -k * (currentPosition.xyz - abovePosition.xyz);
+	 
+	if (localID == verticesPerStrand - 1) {
+		//no springs below, so only has springs pulling from above
+		return springForceAbove;
+	}
+	
+	vec3 springForceBelow = -k * (belowPosition.xyz - currentPosition.xyz);
+	return springForceAbove - springForceBelow;
 }
+
+// vec3 calculateSpringForce(vec4 currentPosition, vec4 initialPosition, int globalVertexIndex, int localID) {
+// 	int k = 500;
+
+// 	return -k * (currentPosition.xyz - initialPosition.xyz);	 
+// }
+
 //for a specific point based on localID and globalID
 void main()
 {
@@ -216,9 +242,9 @@ void main()
 	vec4 tangentDistance = tangentsDistances.data[globalVertexIndex];
 
 
-	if (simulationFrame == phase2) {
-		restPositions.data[globalVertexIndex] = currentPosition;
-	}	
+	//if (simulationFrame == phase2) {
+	//	restPositions.data[globalVertexIndex] = currentPosition;
+	
 
 	vec4 oldcurrentPosition = currentPosition;
 	mat3 Rx = mat3(1, 0,          0,
@@ -255,9 +281,9 @@ void main()
 	vec3 springForce = vec3(0.0f, 0.0f, 0.0f);
 	//vec3 dampingForce = vec3(0.0f, 0.0f, 0.0f);
 	vec3 dampingForce = (damping * 10000) * (currentPosition-previousPosition).xyz;
-	if (simulationFrame > phase2) {
-		springForce = calculateSpringForce(currentPosition, initialPosition);
-	}
+	//if (simulationFrame > phase2) {
+		springForce = calculateSpringForce(currentPosition, initialPosition, globalVertexIndex, localID);
+	//}
 	//Apply forces using Verlet integration
 	if(isMovable(currentPosition)) {
 		float windThreshold = 15.0;
@@ -333,11 +359,11 @@ void main()
 	//Length constraints
 	for(int i = 0; i < lengthConstraintIterations; i++) {//lengthConstraintIterations is set to 5
 		//for debugging purposes
-		bool boolApplyDistanceConstraint = true;
+		bool boolApplyDistanceConstraint = false;
 		if (!boolApplyDistanceConstraint){
 			if(localID % 2 == 0 && localID < verticesPerStrand - 1) {
 				if (simulationFrame <= phase2) {
-					applyDistanceConstraint(localID, localID + 1, tangentDistance.w);
+					//applyDistanceConstraint(localID, localID + 1, tangentDistance.w);
 				}
 				
 			}
@@ -346,7 +372,7 @@ void main()
 
 			if(localID % 2 == 1 && localID < verticesPerStrand - 1) {
 				if (simulationFrame <= phase2) {
-					applyDistanceConstraint(localID, localID + 1, tangentDistance.w);
+					//applyDistanceConstraint(localID, localID + 1, tangentDistance.w);
 				}
 			}
 		} else {

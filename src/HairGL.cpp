@@ -129,7 +129,6 @@ namespace HairGL
         int verticesPerStrand = segmentsCount + 1;
         std::vector<Vector4> vertices(guidesCount * verticesPerStrand);
         
-
         float meanX = 0.;
         float meanY = 0.;
         float meanZ = 0.;

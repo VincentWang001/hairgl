@@ -108,9 +108,9 @@ namespace HairGL
             glUniform4f(glGetUniformLocation(guidesVisualizationProgramID, "color2"), 0, 1, 0, 1);
 
             glBindVertexArray(emptyVertexArrayID);
-            bool pointsMode = true;
+            bool pointsMode = false;
             if(pointsMode) {
-                glPointSize(4.0);
+                glPointSize(6.0);
                 glDrawArrays(GL_POINTS, 0, asset->guidesCount * asset->segmentsCount * 2);
             } else {
                 glDrawArrays(GL_LINES, 0, asset->guidesCount * asset->segmentsCount * 2);
