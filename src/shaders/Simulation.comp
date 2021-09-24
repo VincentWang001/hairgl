@@ -191,32 +191,34 @@ vec3 calculateWindForce(int localID, int globalID) {
 	return windForce;
 }
 
+/*
 //TODO: Implement bending and torsion
 //bending: for localID i, get initial length between node[i-2] and node[i+2]
 vec3 calculateSpringForce(vec4 currentPosition, vec4 initialPosition, int globalVertexIndex, int localID) {
 	if (localID == 0) {//root vertex does not move
 		return vec3(0.0f, 0.0f, 0.0f);
 	}
+	//stretch rest distances
 	float restStretchDistAbove = length(restPositions.data[globalVertexIndex].xyz - restPositions.data[globalVertexIndex - 1].xyz);
 	float restStretchDistBelow = 0.0f;
-	if (localID < verticesPerStrand - 1)
+	if (localID < verticesPerStrand - 1) {
 		restStretchDistBelow = length(restPositions.data[globalVertexIndex].xyz - restPositions.data[globalVertexIndex + 1].xyz);
 	}
 	//bending rest distances
-	float restBendDistAbove = 0.0f
+	float restBendDistAbove = 0.0f;
 	if (localID >= 2) {
 		restBendDistAbove = length(restPositions.data[globalVertexIndex].xyz - restPositions.data[globalVertexIndex - 2].xyz);
 	}
-	float restBendDistBelow = 0.0f
+	float restBendDistBelow = 0.0f;
 	if (localID < verticesPerStrand - 2) {
 		restBendDistBelow = length(restPositions.data[globalVertexIndex].xyz - restPositions.data[globalVertexIndex + 2].xyz);
 	}
 	//torsion rest distances
-	float restTorsionDistAbove = 0.0f
+	float restTorsionDistAbove = 0.0f;
 	if (localID >= 3) {
 		restBendDistAbove = length(restPositions.data[globalVertexIndex].xyz - restPositions.data[globalVertexIndex - 3].xyz);
 	}
-	float restTorsionDistAbove = 0.0f
+	float restTorsionDistBelow = 0.0f;
 	if (localID < verticesPerStrand - 3) {
 		restBendDistAbove = length(restPositions.data[globalVertexIndex].xyz - restPositions.data[globalVertexIndex + 3].xyz);
 	}
@@ -232,8 +234,8 @@ vec3 calculateSpringForce(vec4 currentPosition, vec4 initialPosition, int global
 
 
 	int ks = 5000000;
-	int kb = 5000;
-	int kt = 5000;
+	int kb = 50000;
+	int kt = 50000;
 
 	vec3 vectorStretchAbove = currentPosition.xyz - abovePosition.xyz;
 	vec3 deltaStretchAbove = vectorStretchAbove * (length(vectorStretchAbove) - restStretchDistAbove);
@@ -266,7 +268,7 @@ vec3 calculateSpringForce(vec4 currentPosition, vec4 initialPosition, int global
 	vec3 deltaTorsionBelow = vectorTorsionBelow * (length(vectorTorsionBelow) - restTorsionDistBelow);
 	
 	vec3 springForceBelow = vec3(0.0f, 0.0f, 0.0f);
-	
+
 	if (localID == verticesPerStrand - 1) {//bottom most node has no springs below, so no spring force below
 		springForceBelow = vec3(0.0f, 0.0f, 0.0f);
 	} else if (localID == verticesPerStrand - 2) {//2nd bottommost node has only 1 spring below, so stretch spring
@@ -276,6 +278,33 @@ vec3 calculateSpringForce(vec4 currentPosition, vec4 initialPosition, int global
 	} else {//all other nodes have at least 3 nodes below, so stretch bending torsion
 		springForceBelow = -ks * deltaStretchBelow - kb * deltaBendBelow - kt * deltaTorsionBelow;
 	}
+
+	return springForceAbove - springForceBelow;
+}
+*/
+vec3 calculateSpringForce(vec4 currentPosition, vec4 initialPosition, int globalVertexIndex, int localID) {
+	if (localID == 0) {//root vertex does not move
+		return vec3(0.0f, 0.0f, 0.0f);
+	}
+	float restDistanceAbove = length(restPositions.data[globalVertexIndex].xyz - restPositions.data[globalVertexIndex - 1].xyz);
+	vec4 abovePosition = positions.data[globalVertexIndex - 1];
+	vec4 belowPosition = positions.data[globalVertexIndex + 1];
+	int k = 5000000;
+
+	vec3 vectorAbove = currentPosition.xyz - abovePosition.xyz;
+	vec3 deltaAbove = vectorAbove * (length(vectorAbove) - restDistanceAbove);
+	vec3 springForceAbove = -k * deltaAbove;
+	 
+	if (localID == verticesPerStrand - 1) {
+		//no springs below, so only has springs pulling from above
+		return springForceAbove;
+	}
+	
+	float restDistanceBelow = length(restPositions.data[globalVertexIndex].xyz - restPositions.data[globalVertexIndex + 1].xyz);
+	
+	vec3 vectorBelow = belowPosition.xyz - currentPosition.xyz;
+	vec3 dBelow = vectorBelow * (length(vectorBelow) - restDistanceBelow);
+	vec3 springForceBelow = -k * dBelow;
 
 	return springForceAbove - springForceBelow;
 }
