@@ -191,26 +191,102 @@ vec3 calculateWindForce(int localID, int globalID) {
 	return windForce;
 }
 
+//TODO: Implement bending and torsion
+//bending: for localID i, get initial length between node[i-2] and node[i+2]
 vec3 calculateSpringForce(vec4 currentPosition, vec4 initialPosition, int globalVertexIndex, int localID) {
-	if (localID == 0) {
+	if (localID == 0) {//root vertex does not move
 		return vec3(0.0f, 0.0f, 0.0f);
 	}
-
+	float restStretchDistAbove = length(restPositions.data[globalVertexIndex].xyz - restPositions.data[globalVertexIndex - 1].xyz);
+	float restStretchDistBelow = 0.0f;
+	if (localID < verticesPerStrand - 1)
+		restStretchDistBelow = length(restPositions.data[globalVertexIndex].xyz - restPositions.data[globalVertexIndex + 1].xyz);
+	}
+	//bending rest distances
+	float restBendDistAbove = 0.0f
+	if (localID >= 2) {
+		restBendDistAbove = length(restPositions.data[globalVertexIndex].xyz - restPositions.data[globalVertexIndex - 2].xyz);
+	}
+	float restBendDistBelow = 0.0f
+	if (localID < verticesPerStrand - 2) {
+		restBendDistBelow = length(restPositions.data[globalVertexIndex].xyz - restPositions.data[globalVertexIndex + 2].xyz);
+	}
+	//torsion rest distances
+	float restTorsionDistAbove = 0.0f
+	if (localID >= 3) {
+		restBendDistAbove = length(restPositions.data[globalVertexIndex].xyz - restPositions.data[globalVertexIndex - 3].xyz);
+	}
+	float restTorsionDistAbove = 0.0f
+	if (localID < verticesPerStrand - 3) {
+		restBendDistAbove = length(restPositions.data[globalVertexIndex].xyz - restPositions.data[globalVertexIndex + 3].xyz);
+	}
+	//stretch springs
 	vec4 abovePosition = positions.data[globalVertexIndex - 1];
 	vec4 belowPosition = positions.data[globalVertexIndex + 1];
-	int k = 5000;
+	//bending springs
+	vec4 aboveBending = positions.data[globalVertexIndex - 2];
+	vec4 belowBending = positions.data[globalVertexIndex + 2];
+	//torsion springs
+	vec4 aboveTorsion = positions.data[globalVertexIndex - 3];
+	vec4 belowTorsion = positions.data[globalVertexIndex + 3];
 
+
+	int ks = 5000000;
+	int kb = 5000;
+	int kt = 5000;
+
+	vec3 vectorStretchAbove = currentPosition.xyz - abovePosition.xyz;
+	vec3 deltaStretchAbove = vectorStretchAbove * (length(vectorStretchAbove) - restStretchDistAbove);
+
+	vec3 vectorBendAbove = currentPosition.xyz - aboveBending.xyz;
+	vec3 deltaBendAbove = vectorBendAbove * (length(vectorBendAbove) - restBendDistAbove);
 	
-	vec3 springForceAbove = -k * (currentPosition.xyz - abovePosition.xyz);
+	vec3 vectorTorsionAbove = currentPosition.xyz - aboveTorsion.xyz;
+	vec3 deltaTorsionAbove = vectorTorsionAbove * (length(vectorTorsionAbove) - restTorsionDistAbove);
+
+	vec3 springForceAbove = -ks * deltaStretchAbove - kb * deltaBendAbove - kt * deltaTorsionAbove;
 	 
 	if (localID == verticesPerStrand - 1) {
 		//no springs below, so only has springs pulling from above
 		return springForceAbove;
 	}
 	
-	vec3 springForceBelow = -k * (belowPosition.xyz - currentPosition.xyz);
+	
+	
+	vec3 vectorStretchBelow = belowPosition.xyz - currentPosition.xyz;
+	vec3 deltaStretchBelow = vectorStretchBelow * (length(vectorStretchBelow) - restStretchDistBelow);
+	
+	vec3 vectorBendBelow = belowBending.xyz - currentPosition.xyz;
+	vec3 deltaStretchBelow = vectorBendBelow * (length(vectorBendBelow) - restBendDistBelow);
+	
+	vec3 vectorTorsionBelow = belowTorsion.xyz - currentPosition.xyz;
+	vec3 deltaTorsionBelow = vectorTorsionBelow * (length(vectorTorsionBelow) - restTorsionDistBelow);
+	
+	vec3 springForceBelow = -ks * deltaStretchBelow;
+
 	return springForceAbove - springForceBelow;
 }
+
+// vec3 calculateSpringForce(vec4 currentPosition, vec4 initialPosition, int globalVertexIndex, int localID) {
+// 	if (localID == 0) {
+// 		return vec3(0.0f, 0.0f, 0.0f);
+// 	}
+
+// 	vec4 abovePosition = positions.data[globalVertexIndex - 1];
+// 	vec4 belowPosition = positions.data[globalVertexIndex + 1];
+// 	int k = 5000;
+
+	
+// 	vec3 springForceAbove = -k * (currentPosition.xyz - abovePosition.xyz);
+	 
+// 	if (localID == verticesPerStrand - 1) {
+// 		//no springs below, so only has springs pulling from above
+// 		return springForceAbove;
+// 	}
+	
+// 	vec3 springForceBelow = -k * (belowPosition.xyz - currentPosition.xyz);
+// 	return springForceAbove - springForceBelow;
+// }
 
 // vec3 calculateSpringForce(vec4 currentPosition, vec4 initialPosition, int globalVertexIndex, int localID) {
 // 	int k = 500;
@@ -288,7 +364,7 @@ void main()
 	if(isMovable(currentPosition)) {
 		float windThreshold = 15.0;
 		vec3 force;
-		force = gravity + springForce +	 calculateWindForce(localID, globalID) + rotationForce - dampingForce;
+		force = gravity + defaultForce * globalStiffness + springForce +	 calculateWindForce(localID, globalID) + rotationForce - dampingForce;
 		/*
 		if (windMagnitude > windThreshold) {
 			force = gravity + springForce +	 calculateWindForce(localID, globalID) + rotationForce - dampingForce;

@@ -61,7 +61,7 @@ namespace HairGL
             color(0, 0, 0, 1),
             globalStiffness(0),
 			localStiffness(0),
-            damping(0.04),
+            damping(0.3),
 			wind(0, 0, 0),
             windMagnitude(0.0f),
             thetaX(0),
