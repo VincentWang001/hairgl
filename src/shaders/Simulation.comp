@@ -244,25 +244,38 @@ vec3 calculateSpringForce(vec4 currentPosition, vec4 initialPosition, int global
 	vec3 vectorTorsionAbove = currentPosition.xyz - aboveTorsion.xyz;
 	vec3 deltaTorsionAbove = vectorTorsionAbove * (length(vectorTorsionAbove) - restTorsionDistAbove);
 
-	vec3 springForceAbove = -ks * deltaStretchAbove - kb * deltaBendAbove - kt * deltaTorsionAbove;
-	 
-	if (localID == verticesPerStrand - 1) {
-		//no springs below, so only has springs pulling from above
-		return springForceAbove;
+
+	vec3 springForceAbove = vec3(0.0f, 0.0f, 0.0f);
+	//check if node is far enough down to have a bend or torsion spring above
+	if (localID == 1) {
+		springForceAbove = -ks * deltaStretchAbove;
+	} else if (localID == 2) {
+		springForceAbove = -ks * deltaStretchAbove - kb * deltaBendAbove;
+	} else {
+		springForceAbove = -ks * deltaStretchAbove - kb * deltaBendAbove - kt * deltaTorsionAbove;
 	}
-	
 	
 	
 	vec3 vectorStretchBelow = belowPosition.xyz - currentPosition.xyz;
 	vec3 deltaStretchBelow = vectorStretchBelow * (length(vectorStretchBelow) - restStretchDistBelow);
 	
 	vec3 vectorBendBelow = belowBending.xyz - currentPosition.xyz;
-	vec3 deltaStretchBelow = vectorBendBelow * (length(vectorBendBelow) - restBendDistBelow);
+	vec3 deltaBendBelow = vectorBendBelow * (length(vectorBendBelow) - restBendDistBelow);
 	
 	vec3 vectorTorsionBelow = belowTorsion.xyz - currentPosition.xyz;
 	vec3 deltaTorsionBelow = vectorTorsionBelow * (length(vectorTorsionBelow) - restTorsionDistBelow);
 	
-	vec3 springForceBelow = -ks * deltaStretchBelow;
+	vec3 springForceBelow = vec3(0.0f, 0.0f, 0.0f);
+	
+	if (localID == verticesPerStrand - 1) {//bottom most node has no springs below, so no spring force below
+		springForceBelow = vec3(0.0f, 0.0f, 0.0f);
+	} else if (localID == verticesPerStrand - 2) {//2nd bottommost node has only 1 spring below, so stretch spring
+		springForceBelow = -ks * deltaStretchBelow;
+	} else if (localID == verticesPerStrand - 3) {//3rd bottommost node has 2 springs below, so stretch and bend
+		springForceBelow = -ks * deltaStretchBelow - kb * deltaBendBelow;
+	} else {//all other nodes have at least 3 nodes below, so stretch bending torsion
+		springForceBelow = -ks * deltaStretchBelow - kb * deltaBendBelow - kt * deltaTorsionBelow;
+	}
 
 	return springForceAbove - springForceBelow;
 }
