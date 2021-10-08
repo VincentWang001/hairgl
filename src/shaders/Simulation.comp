@@ -53,6 +53,9 @@ uniform float windMagnitude;
 uniform float thetaX;
 uniform float thetaY;
 uniform float thetaZ;
+uniform float ks;
+uniform float kb;
+uniform float kt;
 uniform int simulationFrame;
 
 int globalID = int(gl_GlobalInvocationID.x);
@@ -210,7 +213,7 @@ vec3 springDeltaXAbove(int springNodeDistance) {
 		return vec3(0.0f, 0.0f, 0.0f);
 	}
 	//restDistAbove represents the distance between current node index i and the node x above (index i - x)
-	float restDistAbove = getRestDist(-springNodeDistance);
+	float restDistAbove = getRestDist(-springNodeDistance);//distance between the two nodes in initial model (time = 0)
 	vec4 abovePosition = positions.data[globalVertexIndex - springNodeDistance];//the xyz location of node above
 	vec3 vectorAbove = currentPosition.xyz - abovePosition.xyz; //vector between the two nodes
 	vec3 forceAbove = normalize(vectorAbove) * (length(vectorAbove) - restDistAbove);
@@ -234,9 +237,9 @@ vec3 calculateSpringForce() {
 		return vec3(0.0f, 0.0f, 0.0f);
 	}
 
-	int ks = 50000;
-	int kb = 0; //subject to change
-	int kt = 0; //subject to change
+	// int ks = 50000;
+	// int kb = 100000; //subject to change
+	// int kt = 100000; //subject to change
 
 	vec3 deltaStretchAbove = springDeltaXAbove(1); //stretch spring above
 	vec3 deltaBendAbove = springDeltaXAbove(2);
@@ -279,7 +282,6 @@ void main()
 
 	//if (simulationFrame == phase2) {
 	//	restPositions.data[globalVertexIndex] = currentPosition;
-	
 
 	vec4 oldcurrentPosition = currentPosition;
 	mat3 Rx = mat3(1, 0,          0,

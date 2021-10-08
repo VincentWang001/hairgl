@@ -70,6 +70,9 @@ namespace HairGL
         glUniform1f(glGetUniformLocation(simulationProgramID, "thetaX"), instance->settings.thetaX);
         glUniform1f(glGetUniformLocation(simulationProgramID, "thetaY"), instance->settings.thetaY);
         glUniform1f(glGetUniformLocation(simulationProgramID, "thetaZ"), instance->settings.thetaZ);
+        glUniform1f(glGetUniformLocation(simulationProgramID, "ks"), instance->settings.ks);
+        glUniform1f(glGetUniformLocation(simulationProgramID, "kb"), instance->settings.kb);
+        glUniform1f(glGetUniformLocation(simulationProgramID, "kt"), instance->settings.kt);
         glUniform1i(glGetUniformLocation(simulationProgramID, "simulationFrame"), instance->simulationFrame);
         glUniform1i(glGetUniformLocation(simulationProgramID, "lengthConstraintIterations"), 5);
 		glUniform1i(glGetUniformLocation(simulationProgramID, "localShapeIterations"), 10);
@@ -107,7 +110,7 @@ namespace HairGL
             glUniform4f(glGetUniformLocation(guidesVisualizationProgramID, "color"), 1, 0, 0, 1);
             
             glBindVertexArray(emptyVertexArrayID);
-            bool pointsMode = false;
+            bool pointsMode = true;
             if(pointsMode) {
                 glPointSize(6.0);
                 glDrawArrays(GL_POINTS, 0, asset->guidesCount * asset->segmentsCount * 2);

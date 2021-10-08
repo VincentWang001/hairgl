@@ -91,6 +91,9 @@ void Application::Update(float timeStep)
     ImGui::SliderFloat("thetaX", &hairSettings.thetaX, -1* upperRotationRadianBound, upperRotationRadianBound);
     ImGui::SliderFloat("thetaY", &hairSettings.thetaY, -1 * upperRotationRadianBound, upperRotationRadianBound);
     ImGui::SliderFloat("thetaZ", &hairSettings.thetaZ, -1 * upperRotationRadianBound, upperRotationRadianBound);
+    ImGui::SliderFloat("ks", &hairSettings.ks, 0, 100000);
+    ImGui::SliderFloat("kb", &hairSettings.kb, 0, 100000);
+    ImGui::SliderFloat("kt", &hairSettings.kt, 0, 100000);
     windMagnitude = hairSettings.windMagnitude;
     ImGui::End();
     ImGui::Render();

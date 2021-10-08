@@ -44,6 +44,9 @@ namespace HairGL
         float thetaX;
         float thetaY;
         float thetaZ;
+        float ks;
+        float kb;
+        float kt;
 
         HairInstanceSettings() :
             visualizeGuides(false),
@@ -66,7 +69,10 @@ namespace HairGL
             windMagnitude(0.0f),
             thetaX(0),
             thetaY(0),
-            thetaZ(0)
+            thetaZ(0),
+            ks(50000),
+            kb(0),
+            kt(0)
         {
             modelMatrix.SetIdentity();
         }
