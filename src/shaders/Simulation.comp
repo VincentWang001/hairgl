@@ -200,14 +200,26 @@ float getRestDist(int globalVertexIndex, int delta) {
 }
 
 vec3 springDeltaXAbove(int springNodeDistance, vec4 currentPosition, int globalVertexIndex, int localID) {
-	float restDistAbove = 0.0f; //this represents the distance between current node index i and the node x above (index i - x)
-	if (localID - springNodeDistance >= 0) { //if not, then there exists no such node above, so there would be no spring force above
-		restDistAbove = getRestDist(globalVertexIndex, -springNodeDistance);
+	if (localID - springNodeDistance < 0) { //if there exists no such node above, there would be no spring force above
+		return vec3(0.0f, 0.0f, 0.0f);
 	}
+	//restDistAbove represents the distance between current node index i and the node x above (index i - x)
+	float restDistAbove = getRestDist(globalVertexIndex, -springNodeDistance);
 	vec4 abovePosition = positions.data[globalVertexIndex - springNodeDistance];//the xyz location of node above
 	vec3 vectorAbove = currentPosition.xyz - abovePosition.xyz; //vector between the two nodes
-	vec3 deltaAbove = normalize(vectorAbove) * (length(vectorAbove) - restDistAbove);
-	return deltaAbove;
+	vec3 forceAbove = normalize(vectorAbove) * (length(vectorAbove) - restDistAbove);
+	return forceAbove;
+}
+
+vec3 springDeltaXBelow(int springNodeDistance, vec4 currentPosition, int globalVertexIndex, int localID) {
+	if (localID + springNodeDistance >= verticesPerStrand) {//check if there exists no such node below 
+		return vec3(0.0f, 0.0f, 0.0f);
+	}
+	float restDistBelow = getRestDist(globalVertexIndex, springNodeDistance);
+	vec4 belowPosition = positions.data[globalVertexIndex + springNodeDistance];
+	vec3 vectorBelow = belowPosition.xyz - currentPosition.xyz;
+	vec3 forceBelow = normalize(vectorBelow) * (length(vectorBelow) - restDistBelow);
+	return forceBelow;
 }
 //TODO: Implement bending and torsion
 //bending: for localID i, get initial length between node[i-2] and node[i+2]
@@ -216,31 +228,30 @@ vec3 calculateSpringForce(vec4 currentPosition, vec4 initialPosition, int global
 		return vec3(0.0f, 0.0f, 0.0f);
 	}
 	//stretch rest distances
-	float restStretchDistAbove = getRestDist(globalVertexIndex, -1);
-	float restStretchDistBelow = 0.0f;
-	if (localID < verticesPerStrand - 1) {
-		restStretchDistBelow = getRestDist(globalVertexIndex, 1);
-	}
+	//float restStretchDistAbove = getRestDist(globalVertexIndex, -1);
+	// float restStretchDistBelow = 0.0f;
+	// if (localID < verticesPerStrand - 1) {
+	// 	restStretchDistBelow = getRestDist(globalVertexIndex, 1);
+	// }
 	//bending rest distances
 	// float restBendDistAbove = 0.0f;	
 	// if (localID >= 2) {
 	// 	restBendDistAbove = getRestDist(globalVertexIndex, -2);
 	// }
-	float restBendDistBelow = 0.0f;
-	if (localID < verticesPerStrand - 2) {
-		restBendDistBelow = getRestDist(globalVertexIndex, 2);
-	}
+	// float restBendDistBelow = 0.0f;
+	// if (localID < verticesPerStrand - 2) {
+	// 	restBendDistBelow = getRestDist(globalVertexIndex, 2);
+	// }
 	//torsion rest distances
 	// float restTorsionDistAbove = 0.0f;
 	// if (localID >= 3) {
 	// 	restTorsionDistAbove = getRestDist(globalVertexIndex, -3);
 	// 	//restBendDistAbove = getRestDist(globalVertexIndex, -3);
 	// }
-	float restTorsionDistBelow = 0.0f;
-	if (localID < verticesPerStrand - 3) {
-		restTorsionDistBelow = getRestDist(globalVertexIndex, 3);
-		//restBendDistAbove = getRestDist(globalVertexIndex, 3);
-	}
+	// float restTorsionDistBelow = 0.0f;
+	// if (localID < verticesPerStrand - 3) {
+	// 	restTorsionDistBelow = getRestDist(globalVertexIndex, 3);
+	// }
 	//stretch springs
 	// vec4 abovePosition = positions.data[globalVertexIndex - 1];
 	vec4 belowPosition = positions.data[globalVertexIndex + 1];
@@ -269,37 +280,43 @@ vec3 calculateSpringForce(vec4 currentPosition, vec4 initialPosition, int global
 	//vec3 deltaTorsionAbove = normalize(vectorTorsionAbove) * (length(vectorTorsionAbove) - restTorsionDistAbove);
 
 
-	vec3 springForceAbove = vec3(0.0f, 0.0f, 0.0f);
+	//vec3 springForceAbove = vec3(0.0f, 0.0f, 0.0f);
 	//check if node is far enough down to have a bend or torsion spring above
-	if (localID == 1) {
-		springForceAbove = -ks * deltaStretchAbove;
-	} else if (localID == 2) {
-		springForceAbove = -ks * deltaStretchAbove - kb * deltaBendAbove;
-	} else {
-		springForceAbove = -ks * deltaStretchAbove - kb * deltaBendAbove - kt * deltaTorsionAbove;
-	}
+	// if (localID == 1) {
+	// 	springForceAbove = -ks * deltaStretchAbove;
+	// } else if (localID == 2) {
+	// 	springForceAbove = -ks * deltaStretchAbove - kb * deltaBendAbove;
+	// } else {
+	// 	springForceAbove = -ks * deltaStretchAbove - kb * deltaBendAbove - kt * deltaTorsionAbove;
+	// }
+	vec3 springForceAbove = -ks * deltaStretchAbove - kb * deltaBendAbove - kt * deltaTorsionAbove;
 	
 	
-	vec3 vectorStretchBelow = belowPosition.xyz - currentPosition.xyz;
-	vec3 deltaStretchBelow = normalize(vectorStretchBelow) * (length(vectorStretchBelow) - restStretchDistBelow);
-	
-	vec3 vectorBendBelow = belowBending.xyz - currentPosition.xyz;
-	vec3 deltaBendBelow = normalize(vectorBendBelow) * (length(vectorBendBelow) - restBendDistBelow);
-	
-	vec3 vectorTorsionBelow = belowTorsion.xyz - currentPosition.xyz;
-	vec3 deltaTorsionBelow = normalize(vectorTorsionBelow) * (length(vectorTorsionBelow) - restTorsionDistBelow);
-	
-	vec3 springForceBelow = vec3(0.0f, 0.0f, 0.0f);
+	//vec3 vectorStretchBelow = belowPosition.xyz - currentPosition.xyz;
+	//vec3 deltaStretchBelow = normalize(vectorStretchBelow) * (length(vectorStretchBelow) - restStretchDistBelow);
+	vec3 deltaStretchBelow = springDeltaXBelow(1, currentPosition, globalVertexIndex, localID);
 
-	 if (localID == verticesPerStrand - 1) {//bottom most node has no springs below, so no spring force below
-	 	springForceBelow = vec3(0.0f, 0.0f, 0.0f);
-	} else if (localID == verticesPerStrand - 2) {//2nd bottommost node has only 1 spring below, so stretch spring
-	 	springForceBelow = -ks * deltaStretchBelow;
-	 } else if (localID == verticesPerStrand - 3) {//3rd bottommost node has 2 springs below, so stretch and bend
-	 	springForceBelow = -ks * deltaStretchBelow - kb * deltaBendBelow;
-	 } else {//all other nodes have at least 3 nodes below, so stretch bending torsion
-		springForceBelow = -ks * deltaStretchBelow - kb * deltaBendBelow - kt * deltaTorsionBelow;
-	}
+	// vec3 vectorBendBelow = belowBending.xyz - currentPosition.xyz;
+	// vec3 deltaBendBelow = normalize(vectorBendBelow) * (length(vectorBendBelow) - restBendDistBelow);
+	vec3 deltaBendBelow = springDeltaXBelow(2, currentPosition, globalVertexIndex, localID);
+
+
+	// vec3 vectorTorsionBelow = belowTorsion.xyz - currentPosition.xyz;
+	// vec3 deltaTorsionBelow = normalize(vectorTorsionBelow) * (length(vectorTorsionBelow) - restTorsionDistBelow);
+	vec3 deltaTorsionBelow = springDeltaXBelow(3, currentPosition, globalVertexIndex, localID);
+
+	// vec3 springForceBelow = vec3(0.0f, 0.0f, 0.0f);
+	// if (localID == verticesPerStrand - 1) {//bottom most node has no springs below, so no spring force below
+	//  	springForceBelow = vec3(0.0f, 0.0f, 0.0f);
+	// } else if (localID == verticesPerStrand - 2) {//2nd bottommost node has only 1 spring below, so stretch spring
+	//  	springForceBelow = -ks * deltaStretchBelow;
+	//  } else if (localID == verticesPerStrand - 3) {//3rd bottommost node has 2 springs below, so stretch and bend
+	//  	springForceBelow = -ks * deltaStretchBelow - kb * deltaBendBelow;
+	//  } else {//all other nodes have at least 3 nodes below, so stretch bending torsion
+	// 	springForceBelow = -ks * deltaStretchBelow - kb * deltaBendBelow - kt * deltaTorsionBelow;
+	// }
+
+	vec3 springForceBelow = -ks * deltaStretchBelow - kb * deltaBendBelow - kt * deltaTorsionBelow;
 
 	return springForceAbove - springForceBelow;
 }
