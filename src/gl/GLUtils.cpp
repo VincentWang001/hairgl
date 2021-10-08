@@ -83,12 +83,6 @@ namespace HairGL
         return LinkProgram(shaderIDs, 5);
     }
 
-    uint32_t LinkProgram(uint32_t vertexShaderID, uint32_t vertexShaderID2, uint32_t tessControlShaderID, uint32_t tessEvaluationShaderID, uint32_t geometryShaderID, uint32_t fragmentShaderID)
-    {
-        uint32_t shaderIDs[6] = { vertexShaderID, vertexShaderID2, tessControlShaderID, tessEvaluationShaderID, geometryShaderID, fragmentShaderID };
-        return LinkProgram(shaderIDs, 6);
-    }
-
     uint32_t LinkProgram(uint32_t vertexShaderID, uint32_t fragmentShaderID)
     {
         uint32_t shaderIDs[2] = { vertexShaderID, fragmentShaderID };

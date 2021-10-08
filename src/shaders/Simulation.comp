@@ -55,6 +55,12 @@ uniform float thetaY;
 uniform float thetaZ;
 uniform int simulationFrame;
 
+int globalID = int(gl_GlobalInvocationID.x);
+int localID = int(gl_LocalInvocationID.y);
+int globalRootVertexIndex = globalID * (verticesPerStrand);
+int globalVertexIndex = globalRootVertexIndex + localID;
+vec4 currentPosition = positions.data[globalVertexIndex];
+
 shared vec4 sharedPositions[MAX_STRAND_VERTICES];
 
 bool isMovable(vec4 position)
@@ -195,27 +201,27 @@ vec3 calculateWindForce(int localID, int globalID) {
 
 //H E L P E R	F U N C T I O N S
 //helper function to get the initial hair position difference in rest position between current index and a delta (nearby delta)
-float getRestDist(int globalVertexIndex, int delta) {
+float getRestDist(int delta) {
 	return length(restPositions.data[globalVertexIndex].xyz - restPositions.data[globalVertexIndex + delta].xyz);
 }
 
-vec3 springDeltaXAbove(int springNodeDistance, vec4 currentPosition, int globalVertexIndex, int localID) {
+vec3 springDeltaXAbove(int springNodeDistance) {
 	if (localID - springNodeDistance < 0) { //if there exists no such node above, there would be no spring force above
 		return vec3(0.0f, 0.0f, 0.0f);
 	}
 	//restDistAbove represents the distance between current node index i and the node x above (index i - x)
-	float restDistAbove = getRestDist(globalVertexIndex, -springNodeDistance);
+	float restDistAbove = getRestDist(-springNodeDistance);
 	vec4 abovePosition = positions.data[globalVertexIndex - springNodeDistance];//the xyz location of node above
 	vec3 vectorAbove = currentPosition.xyz - abovePosition.xyz; //vector between the two nodes
 	vec3 forceAbove = normalize(vectorAbove) * (length(vectorAbove) - restDistAbove);
 	return forceAbove;
 }
 
-vec3 springDeltaXBelow(int springNodeDistance, vec4 currentPosition, int globalVertexIndex, int localID) {
+vec3 springDeltaXBelow(int springNodeDistance) {
 	if (localID + springNodeDistance >= verticesPerStrand) {//check if there exists no such node below 
 		return vec3(0.0f, 0.0f, 0.0f);
 	}
-	float restDistBelow = getRestDist(globalVertexIndex, springNodeDistance);
+	float restDistBelow = getRestDist(springNodeDistance);
 	vec4 belowPosition = positions.data[globalVertexIndex + springNodeDistance];
 	vec3 vectorBelow = belowPosition.xyz - currentPosition.xyz;
 	vec3 forceBelow = normalize(vectorBelow) * (length(vectorBelow) - restDistBelow);
@@ -223,7 +229,7 @@ vec3 springDeltaXBelow(int springNodeDistance, vec4 currentPosition, int globalV
 }
 //TODO: Implement bending and torsion
 //bending: for localID i, get initial length between node[i-2] and node[i+2]
-vec3 calculateSpringForce(vec4 currentPosition, vec4 initialPosition, int globalVertexIndex, int localID) {
+vec3 calculateSpringForce() {
 	if (localID == 0) {//root vertex does not move
 		return vec3(0.0f, 0.0f, 0.0f);
 	}
@@ -232,13 +238,13 @@ vec3 calculateSpringForce(vec4 currentPosition, vec4 initialPosition, int global
 	int kb = 0; //subject to change
 	int kt = 0; //subject to change
 
-	vec3 deltaStretchAbove = springDeltaXAbove(1, currentPosition, globalVertexIndex, localID); //stretch spring above
-	vec3 deltaBendAbove = springDeltaXAbove(2, currentPosition, globalVertexIndex, localID);
-	vec3 deltaTorsionAbove = springDeltaXAbove(3, currentPosition, globalVertexIndex, localID);
+	vec3 deltaStretchAbove = springDeltaXAbove(1); //stretch spring above
+	vec3 deltaBendAbove = springDeltaXAbove(2);
+	vec3 deltaTorsionAbove = springDeltaXAbove(3);
 	
-	vec3 deltaStretchBelow = springDeltaXBelow(1, currentPosition, globalVertexIndex, localID);
-	vec3 deltaBendBelow = springDeltaXBelow(2, currentPosition, globalVertexIndex, localID);
-	vec3 deltaTorsionBelow = springDeltaXBelow(3, currentPosition, globalVertexIndex, localID);
+	vec3 deltaStretchBelow = springDeltaXBelow(1);
+	vec3 deltaBendBelow = springDeltaXBelow(2);
+	vec3 deltaTorsionBelow = springDeltaXBelow(3);
 
 	vec3 springForceAbove = -ks * deltaStretchAbove - kb * deltaBendAbove - kt * deltaTorsionAbove;
 	vec3 springForceBelow = -ks * deltaStretchBelow - kb * deltaBendBelow - kt * deltaTorsionBelow;
@@ -246,60 +252,6 @@ vec3 calculateSpringForce(vec4 currentPosition, vec4 initialPosition, int global
 	return springForceAbove - springForceBelow;
 }
 
-
-// vec3 calculateSpringForce(vec4 currentPosition, vec4 initialPosition, int globalVertexIndex, int localID) {
-// 	if (localID == 0) {//root vertex does not move
-// 		return vec3(0.0f, 0.0f, 0.0f);
-// 	}
-// 	float restDistanceAbove = length(restPositions.data[globalVertexIndex].xyz - restPositions.data[globalVertexIndex - 1].xyz);
-// 	vec4 abovePosition = positions.data[globalVertexIndex - 1];
-// 	vec4 belowPosition = positions.data[globalVertexIndex + 1];
-// 	int k = 50000;
-
-// 	vec3 vectorAbove = currentPosition.xyz - abovePosition.xyz;
-// 	vec3 deltaAbove = (vectorAbove / length(vectorAbove)) * (length(vectorAbove) - restDistanceAbove);
-// 	vec3 springForceAbove = -k * deltaAbove;
-	 
-// 	if (localID == verticesPerStrand - 1) {
-// 		//no springs below, so only has springs pulling from above
-// 		return springForceAbove;
-// 	}
-	
-// 	float restDistanceBelow = length(restPositions.data[globalVertexIndex].xyz - restPositions.data[globalVertexIndex + 1].xyz);
-	
-// 	vec3 vectorBelow = belowPosition.xyz - currentPosition.xyz;
-// 	vec3 dBelow = (vectorBelow / length(vectorBelow)) * (length(vectorBelow) - restDistanceBelow);
-// 	vec3 springForceBelow = -k * dBelow;
-
-// 	return springForceAbove - springForceBelow;
-// }
-
-// vec3 calculateSpringForce(vec4 currentPosition, vec4 initialPosition, int globalVertexIndex, int localID) {
-// 	if (localID == 0) {
-// 		return vec3(0.0f, 0.0f, 0.0f);
-// 	}
-
-// 	vec4 abovePosition = positions.data[globalVertexIndex - 1];
-// 	vec4 belowPosition = positions.data[globalVertexIndex + 1];
-// 	int k = 5000;
-
-	
-// 	vec3 springForceAbove = -k * (currentPosition.xyz - abovePosition.xyz);
-	 
-// 	if (localID == verticesPerStrand - 1) {
-// 		//no springs below, so only has springs pulling from above
-// 		return springForceAbove;
-// 	}
-	
-// 	vec3 springForceBelow = -k * (belowPosition.xyz - currentPosition.xyz);
-// 	return springForceAbove - springForceBelow;
-// }
-
-// vec3 calculateSpringForce(vec4 currentPosition, vec4 initialPosition, int globalVertexIndex, int localID) {
-// 	int k = 500;
-
-// 	return -k * (currentPosition.xyz - initialPosition.xyz);	 
-// }
 
 //for a specific point based on localID and globalID
 void main()
@@ -309,17 +261,17 @@ void main()
 	-damping force
 	*/
 	int phase2 = 500;
-    int globalID = int(gl_GlobalInvocationID.x);
-	int localID = int(gl_LocalInvocationID.y);
+    //int globalID = int(gl_GlobalInvocationID.x);
+	//int localID = int(gl_LocalInvocationID.y);
 
 	if(localID >= verticesPerStrand) {
 	    return;
 	}
 
-	int globalRootVertexIndex = globalID * (verticesPerStrand);
-	int globalVertexIndex = globalRootVertexIndex + localID;
+	//int globalRootVertexIndex = globalID * (verticesPerStrand);
+	//int globalVertexIndex = globalRootVertexIndex + localID;
 
-	vec4 currentPosition = positions.data[globalVertexIndex];
+	//vec4 currentPosition = positions.data[globalVertexIndex];
 	vec4 previousPosition = previousPositions.data[globalVertexIndex];
 	vec4 initialPosition = restPositions.data[globalVertexIndex];
 	vec4 tangentDistance = tangentsDistances.data[globalVertexIndex];
@@ -365,7 +317,7 @@ void main()
 	//vec3 dampingForce = vec3(0.0f, 0.0f, 0.0f);
 	vec3 dampingForce = (damping * 10000) * (currentPosition-previousPosition).xyz;
 	//if (simulationFrame > phase2) {
-		springForce = calculateSpringForce(currentPosition, initialPosition, globalVertexIndex, localID);
+		springForce = calculateSpringForce();
 	//}
 	//Apply forces using Verlet integration
 	if(isMovable(currentPosition)) {

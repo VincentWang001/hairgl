@@ -105,8 +105,7 @@ namespace HairGL
             glUniform1i(glGetUniformLocation(guidesVisualizationProgramID, "doubleSegments"), asset->segmentsCount * 2);
             glUniform1i(glGetUniformLocation(guidesVisualizationProgramID, "verticesPerStrand"), verticesPerStrand);
             glUniform4f(glGetUniformLocation(guidesVisualizationProgramID, "color"), 1, 0, 0, 1);
-            glUniform4f(glGetUniformLocation(guidesVisualizationProgramID, "color2"), 0, 1, 0, 1);
-
+            
             glBindVertexArray(emptyVertexArrayID);
             bool pointsMode = false;
             if(pointsMode) {
@@ -210,20 +209,17 @@ namespace HairGL
     uint32_t Renderer::CreateHairRenderingProgram()
     {
         auto hairVertexShaderSource = LoadFile("hairglshaders/Hair.vert");
-        auto hairVertexShaderSource2 = LoadFile("hairglshaders/Hair2.vert");
         auto hairTessControlShaderSource = LoadFile("hairglshaders/Hair.tesc");
         auto hairTessEvaluationShaderSource = LoadFile("hairglshaders/Hair.tese");
         auto hairGeometrylShaderSource = LoadFile("hairglshaders/Hair.geom");
         auto hairFragmentShaderSource = LoadFile("hairglshaders/Hair.frag");
 
         uint32_t hairVertexShaderID = CompileShader(GLSLVersion, hairVertexShaderSource, GL_VERTEX_SHADER, &shaderIncludeSrc);
-        uint32_t hairVertexShaderID2 = CompileShader(GLSLVersion, hairVertexShaderSource2, GL_VERTEX_SHADER, &shaderIncludeSrc);
         uint32_t hairTessControlShaderID = CompileShader(GLSLVersion, hairTessControlShaderSource, GL_TESS_CONTROL_SHADER, &shaderIncludeSrc);
         uint32_t hairTessEvaluationShaderID = CompileShader(GLSLVersion, hairTessEvaluationShaderSource, GL_TESS_EVALUATION_SHADER, &shaderIncludeSrc);
         uint32_t hairGeometryShaderID = CompileShader(GLSLVersion, hairGeometrylShaderSource, GL_GEOMETRY_SHADER, &shaderIncludeSrc);
         uint32_t hairFragmentShaderID = CompileShader(GLSLVersion, hairFragmentShaderSource, GL_FRAGMENT_SHADER, &shaderIncludeSrc);
 
-        //uint32_t programID = LinkProgram(hairVertexShaderID, hairVertexShaderID2, hairTessControlShaderID, hairTessEvaluationShaderID, hairGeometryShaderID, hairFragmentShaderID);
         uint32_t programID = LinkProgram(hairVertexShaderID, hairTessControlShaderID, hairTessEvaluationShaderID, hairGeometryShaderID, hairFragmentShaderID);
 
         glDeleteShader(hairVertexShaderID);
