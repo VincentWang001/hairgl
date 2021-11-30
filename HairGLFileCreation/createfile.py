@@ -4,12 +4,17 @@ from struct import *
 import numpy as np
 
 def writeToHGL(guidesCount, verticesPerStrand, ifilename, ofilename, objfilename):
+    """
+    guidesCount: number of guide strands in output model
+    verticesPerStrand: number of vertices per strand of output model
+    ifilename: name of obj input file
+    ofilename: name of .hgl output file (to be used for loading into HairGL)
+    objfilename: name of obj output file (mostly just used for visualization in blender)
+    """
     myfile = open(ifilename, 'r')
     points = []
     rootPoints = []
     stepSize = int(100 / verticesPerStrand)
-
-    print("stepSize: " + str(stepSize))
 
     guideStepSize = 900 / guidesCount
     guideArr = []
@@ -37,6 +42,8 @@ def writeToHGL(guidesCount, verticesPerStrand, ifilename, ofilename, objfilename
                 line = myfile.readline()
     myfile.close()
 
+    #tri stores information about triangles by using 
+    #Delauney triangulation on the root points of the guide strands
     tri = Delaunay(np.array(rootPoints))
 
     ofile = open(ofilename, 'wb')
@@ -49,7 +56,7 @@ def writeToHGL(guidesCount, verticesPerStrand, ifilename, ofilename, objfilename
     ofile.write(pack('i', segmentsCount))
     ofile.write(pack('i', trianglesCount))
 
-
+    #store points information into the .hgl file and .obj file
     for point in points:
         line = "v"
         for xyz in point:
@@ -57,7 +64,7 @@ def writeToHGL(guidesCount, verticesPerStrand, ifilename, ofilename, objfilename
             line += " " + str(xyz)
         objfile.write(line + "\n")
 
-
+    #store triangle information into the .hgl file
     for triangle in tri.simplices:
         for num in triangle:
             ofile.write(pack('i', num))
@@ -70,14 +77,6 @@ def writeToHGL(guidesCount, verticesPerStrand, ifilename, ofilename, objfilename
         for j in range(verticesPerStrand):
             line += " " + str(j+1 + i * verticesPerStrand)
         objfile.write(line + "\n")
-    # ofile2 = open(ofilename, 'rb')
-    # for i in range(3):
-    #     byte = unpack('i', ofile2.read(4))
-    #     print(byte)
-    # for i in range(len(points) * 3):
-    #     print(i)
-    #     byte = unpack('f', ofile2.read(4))
-    #     print(byte)
 
 
-writeToHGL(50, 16, "hair10.obj", "hairtest.hgl", "hairtest.obj")
+writeToHGL(50, 16, "hair10.obj", "hairtest1.hgl", "hairtest1.obj")
