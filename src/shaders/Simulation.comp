@@ -230,13 +230,11 @@ vec3 springDeltaXBelow(int springNodeDistance) {
 	vec3 forceBelow = normalize(vectorBelow) * (length(vectorBelow) - restDistBelow);
 	return forceBelow;
 }
-//TODO: Implement bending and torsion
-//bending: for localID i, get initial length between node[i-2] and node[i+2]
+
 vec3 calculateSpringForce() {
 	if (localID == 0) {//root vertex does not move
 		return vec3(0.0f, 0.0f, 0.0f);
 	}
-
 	// int ks = 50000;
 	// int kb = 100000; //subject to change
 	// int kt = 100000; //subject to change
@@ -325,7 +323,7 @@ void main()
 	if(isMovable(currentPosition)) {
 		float windThreshold = 15.0;
 		vec3 force;
-		force = gravity + defaultForce * globalStiffness + springForce +	 calculateWindForce(localID, globalID) + rotationForce - dampingForce;
+		force = gravity + defaultForce * globalStiffness + springForce + calculateWindForce(localID, globalID) + rotationForce - dampingForce;
 		/*
 		if (windMagnitude > windThreshold) {
 			force = gravity + springForce +	 calculateWindForce(localID, globalID) + rotationForce - dampingForce;

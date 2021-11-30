@@ -84,7 +84,7 @@ namespace HairGL
         glMemoryBarrier(GL_SHADER_STORAGE_BARRIER_BIT);
 
 		instance->simulationFrame++;
-        std::cout << "instance simulationframe: " << instance->simulationFrame << std::endl;
+        //std::cout << "instance simulationframe: " << instance->simulationFrame << std::endl;
     }
 
     void Renderer::Render(const HairInstance* instance, const Matrix4& viewMatrix, const Matrix4& projectionMatrix) const
@@ -110,7 +110,7 @@ namespace HairGL
             glUniform4f(glGetUniformLocation(guidesVisualizationProgramID, "color"), 1, 0, 0, 1);
             
             glBindVertexArray(emptyVertexArrayID);
-            bool pointsMode = true;
+            bool pointsMode = false;
             if(pointsMode) {
                 glPointSize(6.0);
                 glDrawArrays(GL_POINTS, 0, asset->guidesCount * asset->segmentsCount * 2);
